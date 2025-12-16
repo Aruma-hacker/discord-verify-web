@@ -7,6 +7,11 @@ const CLIENT_ID = "DISCORD_CLIENT_ID";
 const CLIENT_SECRET = "DISCORD_CLIENT_SECRET";
 const REDIRECT_URI = "http://localhost:3000/callback";
 const BOT_API = "http://localhost:4000/verify-result";
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Web server running");
+});
 
 app.use(express.json());
 
@@ -152,4 +157,5 @@ app.get("/callback", async (req, res) => {
 app.listen(3000, () => {
   console.log("Web server running on http://localhost:3000");
 });
+
 
