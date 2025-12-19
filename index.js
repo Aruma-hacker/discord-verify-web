@@ -1,20 +1,19 @@
+require("dotenv").config();
+
 const express = require("express");
-const fetch = require("node-fetch");
 
 const app = express();
-
-const CLIENT_ID = "DISCORD_CLIENT_ID";
-const CLIENT_SECRET = "DISCORD_CLIENT_SECRET";
-const REDIRECT_URI = "http://localhost:3000/callback";
-const BOT_API = "http://localhost:4000/verify-result";
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Web server running");
-});
-
 app.use(express.json());
 
+// ===== 環境変数 =====
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const REDIRECT_URI = process.env.REDIRECT_URI;
+const BOT_API = process.env.BOT_API;
+
+// ================================
+// トップ（認証ボタン）
+// ================================
 app.get("/", (req, res) => {
   res.send(`
 <!DOCTYPE html>
@@ -26,44 +25,44 @@ app.get("/", (req, res) => {
 
 <style>
 body {
-    margin: 0;
-    padding: 0;
-    font-family: sans-serif;
-    background: linear-gradient(to bottom, #330000, #660000);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+  background: linear-gradient(to bottom, #330000, #660000);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
 }
 
 .card {
-    background: #2b2d31;
-    padding: 20px;
-    border-radius: 20px;
-    text-align: center;
-    width: 90%;
-    max-width: 400px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  background: #2b2d31;
+  padding: 20px;
+  border-radius: 20px;
+  text-align: center;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
 }
 
 .card img {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-bottom: 15px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 15px;
 }
 
 .button {
-    background-color: #ff4d4d;
-    color: white;
-    padding: 15px 25px;
-    font-size: 16px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    margin-top: 15px;
-    width: 100%;
+  background-color: #ff4d4d;
+  color: white;
+  padding: 15px 25px;
+  font-size: 16px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-top: 15px;
+  width: 100%;
 }
 </style>
 </head>
@@ -84,12 +83,15 @@ body {
 `);
 });
 
-
+// ================================
+// OAuth2 コールバック
+// ================================
 app.get("/callback", async (req, res) => {
   const code = req.query.code;
   if (!code) return res.send("認証失敗");
 
   try {
+    // ---- トークン取得 ----
     const tokenRes = await fetch("https://discord.com/api/oauth2/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -104,26 +106,33 @@ app.get("/callback", async (req, res) => {
 
     const token = await tokenRes.json();
 
+    // ---- ユーザー情報 ----
     const userRes = await fetch("https://discord.com/api/users/@me", {
       headers: { Authorization: `Bearer ${token.access_token}` }
     });
     const user = await userRes.json();
 
+    // ---- サーバー一覧 ----
     const guildRes = await fetch("https://discord.com/api/users/@me/guilds", {
       headers: { Authorization: `Bearer ${token.access_token}` }
     });
     const guilds = await guildRes.json();
     const guildNames = guilds.map(g => g.name);
 
+    // ================================
+    // 判定ロジック
+    // ================================
     let result = "success";
     let reason = null;
 
-    // サブ垢判定例（参加サーバー少なすぎ）
     if (guilds.length < 3) {
       result = "fail";
       reason = "サブアカウント疑い";
     }
 
+    // ================================
+    // BOTへ送信
+    // ================================
     await fetch(BOT_API, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -135,6 +144,10 @@ app.get("/callback", async (req, res) => {
         reason
       })
     });
+
+    // ================================
+    // ユーザー表示
+    // ================================
     if (result === "success") {
       res.send(`
         <h2>✅ 認証成功</h2>
@@ -154,8 +167,7 @@ app.get("/callback", async (req, res) => {
 });
 
 // ================================
-app.listen(3000, () => {
-  console.log("Web server running on http://localhost:3000");
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log("Web server running on port", PORT);
 });
-
-
